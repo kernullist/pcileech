@@ -5,6 +5,51 @@
 //
 #include "statistics.h"
 
+VOID _PageStatPrintMemMap(_Inout_ PPAGE_STATISTICS ps)
+{
+	BOOL fIsLinePrinted = FALSE;
+	QWORD i, qwAddrBase, qwAddrEnd;
+	if(!ps->i.fIsFirstPrintCompleted) {
+		printf(" Memory Map:                                  \n START              END               #PAGES\n");
+	}
+	if(!ps->i.MemMapIdx && !ps->i.MemMap[0]) {
+		printf("                                              \n                                              \n");
+		return;
+	}
+	if(ps->i.MemMapPrintCommitIdx >= PAGE_STATISTICS_MEM_MAP_MAX_ENTRY - 4) {
+		printf(" Maximum number of memory map entries reached.\n                                              \n");
+		return;
+	}
+	qwAddrBase = ps->i.qwAddrBase + ps->i.MemMapPrintCommitPages * 0x1000;
+	for(i = ps->i.MemMapPrintCommitIdx; i < PAGE_STATISTICS_MEM_MAP_MAX_ENTRY; i++) {
+		if(!ps->i.MemMap[i] && i == 0) {
+			continue;
+		}
+		if(!ps->i.MemMap[i] || (i == PAGE_STATISTICS_MEM_MAP_MAX_ENTRY - 1)) {
+			break;
+		}
+		qwAddrEnd = qwAddrBase + 0x1000 * (QWORD)ps->i.MemMap[i];
+		if((i % 2) == 0) {
+			fIsLinePrinted = TRUE;
+			printf(
+				" %016llx - %016llx  %08x\n",
+				qwAddrBase,
+				qwAddrEnd - 1,
+				ps->i.MemMap[i]);
+			if(i >= ps->i.MemMapPrintCommitIdx + 2) {
+				ps->i.MemMapPrintCommitPages += ps->i.MemMap[ps->i.MemMapPrintCommitIdx++];
+				ps->i.MemMapPrintCommitPages += ps->i.MemMap[ps->i.MemMapPrintCommitIdx++];
+
+			}
+		}
+		qwAddrBase = qwAddrEnd;
+	}
+	if(!fIsLinePrinted) { // print extra line for formatting reasons.
+		printf(" (No memory successfully read yet)            \n");
+	}
+	printf("                                              \n");
+}
+
 VOID _PageStatShowUpdate(_Inout_ PPAGE_STATISTICS ps)
 {
 	if(0 == ps->cPageTotal) { return; }
@@ -13,89 +58,89 @@ VOID _PageStatShowUpdate(_Inout_ PPAGE_STATISTICS ps)
 	QWORD qwPercentFail = (ps->cPageFail * 200 + 1) / (ps->cPageTotal * 2);
 	QWORD qwTickCountElapsed = GetTickCount64() - ps->i.qwTickCountStart;
 	QWORD qwSpeed = ((ps->cPageSuccess + ps->cPageFail) * 4) / (1 + (qwTickCountElapsed / 1000));
-	QWORD qwLastUpdateCtrl = ps->qwAddr + ps->cPageSuccess + ps->cPageFail + (QWORD)ps->szAction;
+	HANDLE hConsole;
 	CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
 	BOOL isMBs = qwSpeed >= 1024;
-	if(qwLastUpdateCtrl == ps->i.qwLastUpdateCtrl) {
-		return; // only refresh on updates
+	if(ps->i.fIsFirstPrintCompleted) {
+#ifdef WIN32
+		hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+		GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
+		consoleInfo.dwCursorPosition.Y -= ps->i.fMemMap ? 9 : 7;
+		SetConsoleCursorPosition(hConsole, consoleInfo.dwCursorPosition);
+#endif /* WIN32 */
+#if defined(LINUX) || defined(ANDROID)
+		printf(ps->i.fMemMap ? "\033[9A" : "\033[7A"); // move cursor up 7/9 positions
+#endif /* LINUX || ANDROID */
 	}
-	ps->i.qwLastUpdateCtrl = qwLastUpdateCtrl;
-	if(ps->i.hConsole) {
-		GetConsoleScreenBufferInfo(ps->i.hConsole, &consoleInfo);
-		consoleInfo.dwCursorPosition.Y = ps->i.wConsoleCursorPosition;
-		SetConsoleCursorPosition(ps->i.hConsole, consoleInfo.dwCursorPosition);
+	if(ps->i.fMemMap) {
+		_PageStatPrintMemMap(ps);
 	}
-	printf(
-		" Current Action: %s                             \n" \
-		" Access Mode:    %s                             \n" \
-		" Progress:       %u / %u (%u%%)                 \n" \
-		" Speed:          %u %s                          \n" \
-		" Address:        0x%016llX                      \n" \
-		" Pages read:     %u / %u (%u%%)                 \n" \
-		" Pages failed:   %u (%u%%)                      \n",
-		ps->szAction,
-		ps->fKMD ? "KMD (kernel module assisted DMA)" : "DMA (hardware only)             ",
-		(ps->cPageSuccess + ps->cPageFail) / 256,
-		ps->cPageTotal / 256,
-		qwPercentTotal,
-		(isMBs ? qwSpeed >> 10 : qwSpeed),
-		(isMBs ? "MB/s" : "kB/s"),
-		ps->qwAddr,
-		ps->cPageSuccess,
-		ps->cPageTotal,
-		qwPercentSuccess,
-		ps->cPageFail,
-		qwPercentFail);
-	if(!ps->i.hConsole) {
-		ps->i.hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-		GetConsoleScreenBufferInfo(ps->i.hConsole, &consoleInfo);
-		ps->i.wConsoleCursorPosition = consoleInfo.dwCursorPosition.Y - 7;
+	if(ps->cPageTotal < 0x0000000fffffffff) {
+		printf(
+			" Current Action: %s                             \n" \
+			" Access Mode:    %s                             \n" \
+			" Progress:       %llu / %llu (%llu%%)           \n" \
+			" Speed:          %llu %s                        \n" \
+			" Address:        0x%016llX                      \n" \
+			" Pages read:     %llu / %llu (%llu%%)           \n" \
+			" Pages failed:   %llu (%llu%%)                  \n",
+			ps->szAction,
+			ps->fKMD ? "KMD (kernel module assisted DMA)" : "DMA (hardware only)             ",
+			(ps->cPageSuccess + ps->cPageFail) / 256,
+			ps->cPageTotal / 256,
+			qwPercentTotal,
+			(isMBs ? qwSpeed >> 10 : qwSpeed),
+			(isMBs ? "MB/s" : "kB/s"),
+			ps->qwAddr,
+			ps->cPageSuccess,
+			ps->cPageTotal,
+			qwPercentSuccess,
+			ps->cPageFail,
+			qwPercentFail);
+	} else {
+		printf(
+			" Current Action: %s                             \n" \
+			" Access Mode:    %s                             \n" \
+			" Progress:       %llu / (unknown)               \n" \
+			" Speed:          %llu %s                        \n" \
+			" Address:        0x%016llX                      \n" \
+			" Pages read:     %llu                           \n" \
+			" Pages failed:   %llu                           \n",
+			ps->szAction,
+			ps->fKMD ? "KMD (kernel module assisted DMA)" : "DMA (hardware only)             ",
+			(ps->cPageSuccess + ps->cPageFail) / 256,
+			(isMBs ? qwSpeed >> 10 : qwSpeed),
+			(isMBs ? "MB/s" : "kB/s"),
+			ps->qwAddr,
+			ps->cPageSuccess,
+			ps->cPageFail);
 	}
-}
-
-VOID _PageStatPrintMemMap(_In_ PPAGE_STATISTICS ps)
-{
-	QWORD i, qwAddrBase, qwAddrEnd;
-	if(!ps->i.MemMap[0] && !ps->i.MemMapIdx) { return; }
-	printf(" Memory Map:     (displayed below)\n START              END               #PAGES\n");
-	qwAddrBase = ps->i.qwAddrBase;
-	for(i = 0; i < PAGE_STATISTICS_MEM_MAP_MAX_ENTRY; i++) {
-		if(!ps->i.MemMap[i] && i == 0) {
-			continue;
-		}
-		if(!ps->i.MemMap[i] || (i == PAGE_STATISTICS_MEM_MAP_MAX_ENTRY - 1)) {
-			break;
-		}
-		qwAddrEnd = qwAddrBase + ps->i.MemMap[i] * 0x1000;
-		if((i % 2) == 0) {
-			printf(
-				" %016llx - %016llx  %08x\n",
-				qwAddrBase,
-				qwAddrEnd - 1,
-				ps->i.MemMap[i]);
-		}
-		qwAddrBase = qwAddrEnd;
-	}
+	ps->i.fIsFirstPrintCompleted = TRUE;
 }
 
 VOID _PageStatThreadLoop(_In_ PPAGE_STATISTICS ps)
 {
 	while(!ps->i.fThreadExit) {
 		Sleep(100);
-		_PageStatShowUpdate(ps);
+		if(ps->i.fUpdate) {
+			ps->i.fUpdate = FALSE;
+			_PageStatShowUpdate(ps);
+		}
 	}
 	ExitThread(0);
 }
 
 VOID PageStatClose(_Inout_ PPAGE_STATISTICS ps)
 {
+	BOOL status;
 	DWORD dwExitCode;
+	ps->i.fUpdate = TRUE;
 	ps->i.fThreadExit = TRUE;
-	while(GetExitCodeThread(ps->i.hThread, &dwExitCode) && STILL_ACTIVE == dwExitCode) {
+	while((status = GetExitCodeThread(ps->i.hThread, &dwExitCode)) && STILL_ACTIVE == dwExitCode) {
 		SwitchToThread();
 	}
-	if(ps->i.fMemMap) {
-		_PageStatPrintMemMap(ps);
+	if(!status) {
+		Sleep(200);
 	}
 }
 
@@ -133,4 +178,5 @@ VOID PageStatUpdate(_Inout_opt_ PPAGE_STATISTICS ps, _In_ QWORD qwAddr, _In_ QWO
 			ps->i.MemMap[ps->i.MemMapIdx] += (DWORD)cPageFailAdd;
 		}
 	}
+	ps->i.fUpdate = TRUE;
 }

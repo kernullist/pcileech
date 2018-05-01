@@ -57,13 +57,34 @@
     <ClInclude Include="dokan.h">
       <Filter>Header Files\dokan</Filter>
     </ClInclude>
-    <ClInclude Include="device605.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="device3380.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="tlp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="oscompatibility.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="device605_tcp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="devicefpga.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vmm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vmmproc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="vmmvfs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="devicefile.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="devicetmd.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -101,14 +122,43 @@
     <ClCompile Include="vfs.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="device605.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="device3380.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="tlp.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="oscompatibility.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="device605_tcp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="devicefpga.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="devicefile.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vmm.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vmmproc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="vmmvfs.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="devicetmd.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Makefile">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="Android.mk">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

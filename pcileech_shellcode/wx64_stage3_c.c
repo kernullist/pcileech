@@ -1,6 +1,6 @@
 // wx64_stage3_c.c : stage3 main shellcode.
 //
-// (c) Ulf Frisk, 2016
+// (c) Ulf Frisk, 2016, 2017
 // Author: Ulf Frisk, pcileech@frizk.net
 //
 #include <windows.h>
@@ -140,30 +140,30 @@ typedef struct tdNTOS {
 * KMD DATA struct. This struct must be contained in a 4096 byte section (page).
 * This page/struct is used to communicate between the inserted kernel code and
 * the pcileech program.
-* VNR: 002
+* VNR: 003
 */
 typedef struct tdKMDDATA {
 	QWORD MAGIC;					// [0x000] magic number 0x0ff11337711333377.
-	QWORD AddrKernelBase;			// [0x008] pre-filled by stage2, virtual address of KERNEL HEADER (WINDOWS/OSX).
+	QWORD AddrKernelBase;			// [0x008] pre-filled by stage2, virtual address of kernel header (WINDOWS/MACOS).
 	QWORD AddrKallsymsLookupName;	// [0x010] pre-filled by stage2, virtual address of kallsyms_lookup_name (LINUX).
 	QWORD DMASizeBuffer;			// [0x018] size of DMA buffer.
 	QWORD DMAAddrPhysical;			// [0x020] physical address of DMA buffer.
 	QWORD DMAAddrVirtual;			// [0x028] virtual address of DMA buffer.
 	QWORD _status;					// [0x030] status of operation
 	QWORD _result;					// [0x038] result of operation TRUE|FALSE
-	QWORD _address;					// [0x040] virtual address to operate on.
+	QWORD _address;					// [0x040] address to operate on.
 	QWORD _size;					// [0x048] size of operation / data in DMA buffer.
 	QWORD OperatingSystem;			// [0x050] operating system type
-	QWORD ReservedKMD;				// [0x058] reserved for specific kmd data (dependant on KMD version).
-	QWORD ReservedFutureUse1[20];	// [0x060] reserved for future use.
+	QWORD ReservedKMD[8];			// [0x058] reserved for specific kmd data (dependant on KMD version).
+	QWORD ReservedFutureUse1[13];	// [0x098] reserved for future use.
 	QWORD dataInExtraLength;		// [0x100] length of extra in-data.
 	QWORD dataInExtraOffset;		// [0x108] offset from DMAAddrPhysical/DMAAddrVirtual.
 	QWORD dataInExtraLengthMax;		// [0x110] maximum length of extra in-data. 
 	QWORD dataInConsoleBuffer;		// [0x118] physical address of 1-page console buffer.
 	QWORD dataIn[28];				// [0x120]
-	QWORD dataOutExtraLength;		// [0x200] length of extra in-data.
+	QWORD dataOutExtraLength;		// [0x200] length of extra out-data.
 	QWORD dataOutExtraOffset;		// [0x208] offset from DMAAddrPhysical/DMAAddrVirtual.
-	QWORD dataOutExtraLengthMax;	// [0x210] maximum length of extra in-data. 
+	QWORD dataOutExtraLengthMax;	// [0x210] maximum length of extra out-data. 
 	QWORD dataOutConsoleBuffer;		// [0x218] physical address of 1-page console buffer.
 	QWORD dataOut[28];				// [0x220]
 	NTOS fn;						// [0x300] used by shellcode to store function pointers.
@@ -227,17 +227,22 @@ VOID stage3_c_EntryPoint(PKMDDATA pk)
 {
 	pk->MAGIC = 0x0ff11337711333377;
 	pk->OperatingSystem = KMDDATA_OPERATING_SYSTEM_WINDOWS;
-	pk->fn.ExFreePool = PEGetProcAddressH(pk->AddrKernelBase, H_ExFreePool);
-	pk->fn.MmFreeContiguousMemory = PEGetProcAddressH(pk->AddrKernelBase, H_MmFreeContiguousMemory);
-	pk->fn.MmAllocateContiguousMemory = PEGetProcAddressH(pk->AddrKernelBase, H_MmAllocateContiguousMemory);
-	pk->fn.MmGetPhysicalAddress = PEGetProcAddressH(pk->AddrKernelBase, H_MmGetPhysicalAddress);
-	pk->fn.MmGetPhysicalMemoryRanges = PEGetProcAddressH(pk->AddrKernelBase, H_MmGetPhysicalMemoryRanges);
-	pk->fn.MmMapIoSpace = PEGetProcAddressH(pk->AddrKernelBase, H_MmMapIoSpace);
-	pk->fn.MmUnmapIoSpace = PEGetProcAddressH(pk->AddrKernelBase, H_MmUnmapIoSpace);
-	pk->fn.PsCreateSystemThread = PEGetProcAddressH(pk->AddrKernelBase, H_PsCreateSystemThread);
-	pk->fn.RtlCopyMemory = PEGetProcAddressH(pk->AddrKernelBase, H_RtlCopyMemory);
-	pk->fn.ZwProtectVirtualMemory = PEGetProcAddressH(pk->AddrKernelBase, H_ZwProtectVirtualMemory);
-	pk->fn.KeDelayExecutionThread = PEGetProcAddressH(pk->AddrKernelBase, H_KeDelayExecutionThread);
+	DWORD i = 0, NAMES[32];
+	NAMES[i++] = H_ExFreePool;
+	NAMES[i++] = H_MmFreeContiguousMemory;
+	NAMES[i++] = H_MmAllocateContiguousMemory;
+	NAMES[i++] = H_MmGetPhysicalAddress;
+	NAMES[i++] = H_MmGetPhysicalMemoryRanges;
+	NAMES[i++] = H_MmMapIoSpace;
+	NAMES[i++] = H_MmUnmapIoSpace;
+	NAMES[i++] = H_PsCreateSystemThread;
+	NAMES[i++] = H_RtlCopyMemory;
+	NAMES[i++] = H_ZwProtectVirtualMemory;
+	NAMES[i++] = H_KeDelayExecutionThread;
+	while(i) {
+		i--;
+		*((PQWORD)&pk->fn + i) = PEGetProcAddressH(pk->AddrKernelBase, NAMES[i]);
+	}
 	stage3_c_MainCommandLoop(pk);
 }
 

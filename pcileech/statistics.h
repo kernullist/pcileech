@@ -1,13 +1,13 @@
 // statistics.h : definitions of statistics related functionality.
 //
-// (c) Ulf Frisk, 2016, 2017
+// (c) Ulf Frisk, 2016-2018
 // Author: Ulf Frisk, pcileech@frizk.net
 //
 #ifndef __STATISTICS_H__
 #define __STATISTICS_H__
 #include "pcileech.h"
 
-#define PAGE_STATISTICS_MEM_MAP_MAX_ENTRY	256
+#define PAGE_STATISTICS_MEM_MAP_MAX_ENTRY	4096
 
 typedef struct tdPageStatistics {
 	QWORD qwAddr;
@@ -17,15 +17,17 @@ typedef struct tdPageStatistics {
 	BOOL fKMD;
 	LPSTR szAction;
 	struct _InternalUseOnly {
+		BOOL fUpdate;
 		BOOL fThreadExit;
 		BOOL fMemMap;
+		BOOL fIsFirstPrintCompleted;
 		HANDLE hThread;
-		HANDLE hConsole;
 		WORD wConsoleCursorPosition;
 		QWORD qwTickCountStart;
-		QWORD qwLastUpdateCtrl;
 		QWORD qwAddrBase;
 		QWORD MemMapIdx;
+		QWORD MemMapPrintCommitIdx;
+		QWORD MemMapPrintCommitPages;
 		DWORD MemMap[PAGE_STATISTICS_MEM_MAP_MAX_ENTRY];
 	} i;
 } PAGE_STATISTICS, *PPAGE_STATISTICS;

@@ -1,6 +1,6 @@
 // util.h : definitions of various utility functions.
 //
-// (c) Ulf Frisk, 2016, 2017
+// (c) Ulf Frisk, 2016-2018
 // Author: Ulf Frisk, pcileech@frizk.net
 //
 #ifndef __UTIL_H__
@@ -58,6 +58,18 @@ BOOL Util_PageTable_FindSignatureBase(_Inout_ PPCILEECH_CONTEXT ctx, _Inout_ PQW
 BOOL Util_PageTable_FindMappedAddress(_Inout_ PPCILEECH_CONTEXT ctx, _In_ QWORD qwCR3, _In_ QWORD qwAddrPhys, _Out_ PQWORD pqwAddrVirt, _Out_opt_ PQWORD pqwPTE, _Out_opt_ PQWORD pqwPDE, _Out_opt_ PQWORD pqwPDPTE, _Out_opt_ PQWORD pqwPML4E);
 
 /*
+* Walk the page table to translate a virtual address into a physical.
+* -- ctx
+* -- qwCR3 = the physical address of PML4.
+* -- qwVA = the virtual address.
+* -- pqwPA = ptr to receive physical address.
+* -- pqwPageBase = ptr to receive the page base of the physical address.
+* -- pqwPageSize = ptr to receive size of physical page in bytes.
+* -- return
+*/
+BOOL Util_PageTable_Virtual2Physical(_Inout_ PPCILEECH_CONTEXT ctx, _In_ QWORD qwCR3, _In_ QWORD qwVA, _Out_ PQWORD pqwPA, _Out_ PQWORD pqwPageBase, _Out_ PQWORD pqwPageSize);
+
+/*
 * Load KMD and Unlock signatures.
 * -- szSignatureName
 * -- szFileExtension
@@ -109,6 +121,13 @@ VOID Util_GenRandom(_Out_ PBYTE pb, _In_ DWORD cb);
 BOOL Util_LoadKmdExecShellcode(_In_ LPSTR szKmdExecName, _Out_ PKMDEXEC* ppKmdExec);
 
 /*
+* Retrieve the file size of the file. If the file isn't found 0 is returned.
+* -- sz = file to retrieve size of.
+* -- return = file size, or 0 on fail.
+*/
+DWORD Util_GetFileSize(_In_ LPSTR sz);
+
+/*
 * Parse an input line consisting of either builtin, hexascii or file name to
 * data buffer.
 */
@@ -137,8 +156,8 @@ QWORD Util_GetNumeric(_In_ LPSTR sz);
 * -- pSignature = ptr to signature struct to place the result in.
 */
 VOID Util_CreateSignatureLinuxGeneric(_In_ QWORD paBase,
-	_In_ DWORD paSzKallsyms, _In_ QWORD vaSzKallsyms, _In_ QWORD vaFnKallsyms,
-	_In_ DWORD paSzFnHijack, _In_ QWORD vaSzFnHijack, _In_ QWORD vaFnHijack, _Out_ PSIGNATURE pSignature);
+    _In_ DWORD paSzKallsyms, _In_ QWORD vaSzKallsyms, _In_ QWORD vaFnKallsyms,
+    _In_ DWORD paSzFnHijack, _In_ QWORD vaSzFnHijack, _In_ QWORD vaFnHijack, _Out_ PSIGNATURE pSignature);
 /*
 * "Create" a static signature for FreeBSD given the supplied parameters. The
 * function formats the paramerters and put them into the supplied pSignature.
@@ -214,7 +233,8 @@ VOID Util_WaitForPowerOn(_Inout_ PPCILEECH_CONTEXT ctx);
 * Print a maximum of 8192 bytes of binary data as hexascii on the screen.
 * -- pb
 * -- cb
+* -- cbInitialOffset = offset, must be max 0x1000 and multiple of 0x10.
 */
-VOID Util_PrintHexAscii(_In_ PBYTE pb, _In_ DWORD cb);
+VOID Util_PrintHexAscii(_In_ PBYTE pb, _In_ DWORD cb, _In_ DWORD cbInitialOffset);
 
 #endif /* __UTIL_H__ */

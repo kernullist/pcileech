@@ -1,4 +1,4 @@
-// device605.h : definitions related PCIe TLPs (transaction layper packets).
+// tlp.h : definitions related PCIe TLPs (transaction layper packets).
 //
 // (c) Ulf Frisk, 2017
 // Author: Ulf Frisk, pcileech@frizk.net
@@ -22,7 +22,7 @@
 #define TLP_Cpl			0x0A
 #define TLP_CplD		0x4A
 #define TLP_CplLk		0x0B
-#define TLP_CplLkD		0x4B
+#define TLP_CplDLk		0x4B
 
 typedef struct tdTLP_HDR {
 	WORD Length : 10;
@@ -67,6 +67,21 @@ typedef struct tdTLP_HDR_CplD {
 	WORD RequesterID;
 } TLP_HDR_CplD, *PTLP_HDR_CplD;
 
+typedef struct tdTLP_HDR_Cfg {
+	TLP_HDR h;
+	BYTE FirstBE : 4;
+	BYTE LastBE : 4;
+	BYTE Tag;
+	WORD RequesterID;
+	BYTE _R1 : 2;
+	BYTE RegNum : 6;
+	BYTE ExtRegNum : 4;
+	BYTE _R2 : 4;
+	BYTE FunctionNum : 3;
+	BYTE DeviceNum : 5;
+	BYTE BusNum;
+} TLP_HDR_Cfg, *PTLP_HDR_Cfg;
+
 /*
 * Print a PCIe TLP packet on the screen in a human readable format.
 * -- pbTlp = complete TLP packet (header+data)
@@ -74,5 +89,45 @@ typedef struct tdTLP_HDR_CplD {
 * -- isTx = TRUE = packet is transmited, FALSE = packet is received.
 */
 VOID TLP_Print(_In_ PBYTE pbTlp, _In_ DWORD cbTlp, _In_ BOOL isTx);
+
+typedef struct tdTLP_CALLBACK_BUF_MRd {
+	DWORD cbMax;
+	DWORD cb;
+	PBYTE pb;
+} TLP_CALLBACK_BUF_MRd, *PTLP_CALLBACK_BUF_MRd;
+
+typedef struct tdTLP_CALLBACK_BUF_MRd_SCATTER {
+    PPDMA_IO_SCATTER_HEADER pph;  // pointer to pointer-table to DMA_READ_SCATTER_HEADERs.
+    DWORD cph;                      // entry count of pph array.
+    DWORD cbReadTotal;              // total bytes read.
+    BYTE bEccBit;                   // alternating bit (Tlp.Tag[7]) for ECC.
+} TLP_CALLBACK_BUF_MRd_SCATTER, *PTLP_CALLBACK_BUF_MRd_SCATTER;
+
+/*
+* Generic callback function that may be used by TLP capable devices to aid the
+* collection of memory read completions. Receives single TLP packet.
+* -- pBufferMrd
+* -- pb
+* -- cb
+*/
+VOID TLP_CallbackMRd(_Inout_ PTLP_CALLBACK_BUF_MRd pBufferMrd, _In_ PBYTE pb, _In_ DWORD cb);
+
+/*
+* Generic callback function that may be used by TLP capable devices to aid the
+* collection of memory read completions. Receives single TLP packet.
+* -- pBufferMrd_2
+* -- pb
+* -- cb
+*/
+VOID TLP_CallbackMRd_Scatter(_Inout_ PTLP_CALLBACK_BUF_MRd_SCATTER pBufferMrd_Scatter, _In_ PBYTE pb, _In_ DWORD cb);
+
+/*
+* Generic callback function that may be used by TLP capable devices to aid the
+* collection of completions from the probe function. Receives single TLP packet.
+* -- pBufferMrd
+* -- pb
+* -- cb
+*/
+VOID TLP_CallbackMRdProbe(_Inout_ PTLP_CALLBACK_BUF_MRd pBufferMRd, _In_ PBYTE pb, _In_ DWORD cb);
 
 #endif /* __TLP_H__ */
